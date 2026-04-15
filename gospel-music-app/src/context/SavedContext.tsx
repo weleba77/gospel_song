@@ -3,11 +3,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect } from "react";
 
 export interface Song {
-  coverImage: string;
   _id: string;
   title: string;
   artist: string;
   audioUrl: string;
+  coverImage?: string | null;
 }
 
 interface SavedContextType {

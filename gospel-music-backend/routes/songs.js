@@ -4,6 +4,9 @@ import { auth, admin } from "../middleware/auth.js";
 import Song from "../models/song.js";
 import multer from "multer";
 import path from "path";
+import axios from "axios";
+import fs from "fs";
+import { pipeline } from "stream/promises";
 
 const router = express.Router();
 
@@ -73,6 +76,39 @@ router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 },
     // If an audio file was uploaded, generate its URL
     if (req.files?.audioFile?.[0]) {
       audioUrl = `${baseUrl}/uploads/${req.files.audioFile[0].filename}`;
+    } else if (audioUrl) {
+      // If a URL was provided instead of a file, download it to the server
+      try {
+        console.log("Downloading audio from URL:", audioUrl);
+        const response = await axios({
+          method: "get",
+          url: audioUrl,
+          responseType: "stream",
+          timeout: 30000, // 30 second timeout
+        });
+
+        const contentType = response.headers["content-type"];
+        let extension = ".mp3";
+        if (contentType) {
+          if (contentType.includes("audio/wav")) extension = ".wav";
+          else if (contentType.includes("audio/aac")) extension = ".aac";
+          else if (contentType.includes("audio/ogg")) extension = ".ogg";
+          else if (contentType.includes("audio/flac")) extension = ".flac";
+        }
+
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const filename = `url-download-${uniqueSuffix}${extension}`;
+        const targetPath = path.join("uploads", filename);
+
+        await pipeline(response.data, fs.createWriteStream(targetPath));
+        
+        // Update audioUrl to point to local hosted file
+        audioUrl = `${baseUrl}/uploads/${filename}`;
+        console.log("Download complete. Local URL:", audioUrl);
+      } catch (downloadErr) {
+        console.error("Failed to download audio from URL:", downloadErr.message);
+        return res.status(400).json({ message: "Failed to download the audio from the provided URL. Please ensure it is a direct link." });
+      }
     }
     
     // If a cover image was uploaded, generate its URL

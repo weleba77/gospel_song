@@ -7,6 +7,7 @@ interface Song {
   title: string;
   artist: string;
   audioUrl: string;
+  coverImage?: string | null;
 }
 
 interface AudioType {

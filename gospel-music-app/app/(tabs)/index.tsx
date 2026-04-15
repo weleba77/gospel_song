@@ -126,13 +126,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Search Bar */}
-        <TouchableOpacity 
-          onPress={() => router.push("/(tabs)/search")}
-          className="bg-gray-800 mt-4 p-3 rounded-xl flex-row items-center"
-        >
-          <Ionicons name="search" size={18} color="#aaa" />
-          <Text className="text-gray-400 ml-2">Search songs...</Text>
-        </TouchableOpacity>
+        
 
         {/* Trending */}
         <Text className="text-white text-lg mt-6 mb-2 font-semibold">

@@ -20,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 // ✅ Serve static files from 'uploads'
-app.use("/uploads", express.proxy ? express.static(path.join(__dirname, "uploads")) : express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 console.log("MONGO_URI:", process.env.MONGO_URI, {
     useNewUrlParser: true,
