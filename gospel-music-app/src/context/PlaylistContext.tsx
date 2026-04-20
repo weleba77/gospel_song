@@ -1,4 +1,5 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "../api";
 
 export interface Song {
@@ -7,6 +8,7 @@ export interface Song {
   artist: string;
   audioUrl: string;
   coverImage?: string | null;
+  category: string;
 }
 
 export interface Playlist {
@@ -34,6 +36,10 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(false);
 
   const fetchPlaylists = async () => {
+    // Guard: only fetch if a token actually exists in storage
+    const token = await AsyncStorage.getItem("token");
+    if (!token) return;
+
     try {
       setLoading(true);
       const res = await API.get("/playlists");
@@ -46,7 +52,11 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    fetchPlaylists();
+    // Small delay so AuthContext has time to load token from AsyncStorage first
+    const timer = setTimeout(() => {
+      fetchPlaylists();
+    }, 300);
+    return () => clearTimeout(timer);
   }, []);
 
   const createPlaylist = async (name: string) => {

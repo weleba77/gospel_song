@@ -21,9 +21,25 @@ interface AuthType {
 
 export const AuthContext = createContext<AuthType>({} as AuthType);
 
+// Allow the API interceptor to trigger a logout from outside React tree
+let _globalLogout: (() => void) | null = null;
+export const triggerGlobalLogout = () => {
+  if (_globalLogout) _globalLogout();
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Register the global logout callback
+  useEffect(() => {
+    _globalLogout = () => {
+      setUser(null);
+    };
+    return () => {
+      _globalLogout = null;
+    };
+  }, []);
 
   // Load user from storage
   useEffect(() => {
@@ -81,4 +97,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+};

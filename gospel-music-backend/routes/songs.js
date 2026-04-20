@@ -36,17 +36,31 @@ const upload = multer({
 // @desc    Search for songs by title or artist
 router.get("/search", async (req, res) => {
   try {
-    const { q } = req.query;
-    if (!q) return res.json([]);
+    const { q, category } = req.query;
+    if (!q && !category) return res.json([]);
 
-    const songs = await Song.find({
-      $or: [
+    let query = {};
+    if (q) {
+      query.$or = [
         { title: { $regex: q, $options: "i" } },
         { artist: { $regex: q, $options: "i" } },
-      ],
-    }).limit(20);
+      ];
+    }
+    if (category) {
+      query.category = category;
+    }
 
-    res.json(songs);
+    const songs = await Song.find(query).limit(20);
+    
+    // Dynamically prepend baseUrl to relative paths
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const mappedSongs = songs.map(song => ({
+      ...song._doc,
+      audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
+      coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
+    }));
+
+    res.json(mappedSongs);
   } catch (err) {
     console.error("Search Error:", err);
     res.status(500).json({ message: "Server error" });
@@ -54,11 +68,24 @@ router.get("/search", async (req, res) => {
 });
 
 // @route   GET /api/songs
-// @desc    Get all songs
+// @desc    Get all songs (optionally filtered by category)
 router.get("/", async (req, res) => {
   try {
-    const songs = await Song.find();
-    res.json(songs);
+    const { category } = req.query;
+    let query = {};
+    if (category) query.category = category;
+    
+    const songs = await Song.find(query);
+    
+    // Dynamically prepend baseUrl to relative paths
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const mappedSongs = songs.map(song => ({
+      ...song._doc,
+      audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
+      coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
+    }));
+
+    res.json(mappedSongs);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
@@ -69,13 +96,12 @@ router.get("/", async (req, res) => {
 // @access  Admin
 router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 }, { name: "coverImage", maxCount: 1 }]), async (req, res) => {
   try {
-    const { title, artist } = req.body;
+    const { title, artist, category } = req.body;
     let { audioUrl, coverImageUrl } = req.body;
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     // If an audio file was uploaded, generate its URL
     if (req.files?.audioFile?.[0]) {
-      audioUrl = `${baseUrl}/uploads/${req.files.audioFile[0].filename}`;
+      audioUrl = `/uploads/${req.files.audioFile[0].filename}`;
     } else if (audioUrl) {
       // If a URL was provided instead of a file, download it to the server
       try {
@@ -103,8 +129,8 @@ router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 },
         await pipeline(response.data, fs.createWriteStream(targetPath));
         
         // Update audioUrl to point to local hosted file
-        audioUrl = `${baseUrl}/uploads/${filename}`;
-        console.log("Download complete. Local URL:", audioUrl);
+        audioUrl = `/uploads/${filename}`;
+        console.log("Download complete. Local Path:", audioUrl);
       } catch (downloadErr) {
         console.error("Failed to download audio from URL:", downloadErr.message);
         return res.status(400).json({ message: "Failed to download the audio from the provided URL. Please ensure it is a direct link." });
@@ -113,7 +139,7 @@ router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 },
     
     // If a cover image was uploaded, generate its URL
     if (req.files?.coverImage?.[0]) {
-      coverImageUrl = `${baseUrl}/uploads/${req.files.coverImage[0].filename}`;
+      coverImageUrl = `/uploads/${req.files.coverImage[0].filename}`;
     }
 
     if (!title || !artist || !audioUrl) {
@@ -123,6 +149,7 @@ router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 },
     const newSong = new Song({ 
       title, 
       artist, 
+      category,
       audioUrl, 
       coverImage: coverImageUrl || null,
       uploadedBy: req.user.id
@@ -141,7 +168,15 @@ router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 },
 router.get("/my-songs", auth, admin, async (req, res) => {
   try {
     const songs = await Song.find({ uploadedBy: req.user.id });
-    res.json(songs);
+    
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const mappedSongs = songs.map(song => ({
+      ...song._doc,
+      audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
+      coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
+    }));
+
+    res.json(mappedSongs);
   } catch (err) {
     console.error("My Songs Error:", err);
     res.status(500).json({ message: "Server error" });

@@ -9,6 +9,7 @@ export interface Song {
   artist: string;
   audioUrl: string;
   coverImage?: string | null;
+  category: string;
 }
 
 export interface DownloadedSong extends Song {

@@ -8,6 +8,7 @@ export interface Song {
   artist: string;
   audioUrl: string;
   coverImage?: string | null;
+  category: string;
 }
 
 interface SavedContextType {

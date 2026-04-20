@@ -14,7 +14,10 @@ export default function AdminAddSong() {
   const [audioUrl, setAudioUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [coverImage, setCoverImage] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [category, setCategory] = useState("Worship");
   const [loading, setLoading] = useState(false);
+  
+  const categories = ["Worship", "Praise", "Choir", "Instrumental", "Other"];
 
   const pickAudioFile = async () => {
     try {
@@ -51,7 +54,7 @@ export default function AdminAddSong() {
   };
 
   const handleAddSong = async () => {
-    if (!title || !artist || (!audioUrl && !selectedFile)) {
+    if (!title || !artist || !category || (!audioUrl && !selectedFile)) {
       Alert.alert("Error", "Please fill in all fields and provide an audio file or URL");
       return;
     }
@@ -61,6 +64,7 @@ export default function AdminAddSong() {
       const formData = new FormData();
       formData.append("title", title);
       formData.append("artist", artist);
+      formData.append("category", category);
 
       if (selectedFile) {
         if (Platform.OS === "web") {
@@ -165,6 +169,28 @@ export default function AdminAddSong() {
           onChangeText={setArtist}
           style={{ backgroundColor: "#111827", color: "white", padding: 16, borderRadius: 12, marginBottom: 24, borderWidth: 1, borderColor: "#1f2937" }}
         />
+
+        {/* Category Selector */}
+        <Text style={{ color: "#9ca3af", marginBottom: 12 }}>Song Category *</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 24 }}>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              onPress={() => setCategory(cat)}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 20,
+                backgroundColor: category === cat ? "#4f46e5" : "#111827",
+                marginRight: 10,
+                borderWidth: 1,
+                borderColor: category === cat ? "#818cf8" : "#374151"
+              }}
+            >
+              <Text style={{ color: category === cat ? "white" : "#9ca3af", fontWeight: "bold" }}>{cat}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         {/* Audio Source */}
         <Text style={{ color: "white", fontSize: 16, fontWeight: "bold", marginBottom: 16 }}>Audio Source *</Text>

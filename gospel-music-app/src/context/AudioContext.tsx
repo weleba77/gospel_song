@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, ReactNode, useCallback, useContext } from "react";
-import { useAudioPlayer, AudioSource, createAudioPlayer } from "expo-audio";
+import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DownloadContext } from "./DownloadContext";
 
 interface Song {
@@ -8,6 +9,7 @@ interface Song {
   artist: string;
   audioUrl: string;
   coverImage?: string | null;
+  category: string;
 }
 
 interface AudioType {
@@ -28,6 +30,8 @@ interface AudioType {
 
 export const AudioContext = createContext<AudioType>({} as AudioType);
 
+const PERSISTENCE_KEY = "last_played_song";
+
 export const AudioProvider = ({ children }: { children: ReactNode }) => {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [queue, setQueue] = useState<Song[]>([]);
@@ -38,6 +42,40 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
   const [duration, setDuration] = useState(0);
 
   const { downloadedSongs } = useContext(DownloadContext);
+
+  // Enable background audio playback on mount
+  useEffect(() => {
+    setAudioModeAsync({
+      playsInSilentModeIOS: true,   // Play even when iPhone silent switch is on
+      shouldPlayInBackground: true,  // Keep playing when app is minimized
+      interruptionModeIOS: 'doNotMix',
+      interruptionModeAndroid: 'doNotMix',
+    }).catch((err) => console.warn("Failed to set audio mode:", err));
+  }, []);
+
+  // Load last played song from persistence
+  useEffect(() => {
+    const loadLastSong = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(PERSISTENCE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setCurrentSong(parsed);
+          // Note: We don't auto-play on load to avoid unexpected noise
+        }
+      } catch (err) {
+        console.error("Failed to load last played song:", err);
+      }
+    };
+    loadLastSong();
+  }, []);
+
+  // Save current song to persistence
+  useEffect(() => {
+    if (currentSong) {
+      AsyncStorage.setItem(PERSISTENCE_KEY, JSON.stringify(currentSong));
+    }
+  }, [currentSong]);
 
   const getEffectiveUrl = useCallback((song: Song) => {
     return downloadedSongs[song._id]?.localAudioUrl || song.audioUrl;

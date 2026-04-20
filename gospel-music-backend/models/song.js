@@ -5,6 +5,7 @@ const songSchema = new mongoose.Schema({
   artist: { type: String, required: true },
   audioUrl: { type: String, required: true },
   coverImage: { type: String, default: null },
+  category: { type: String, required: true, enum: ["Worship", "Praise", "Choir", "Instrumental", "Other"] },
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
 });
 
