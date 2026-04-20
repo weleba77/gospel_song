@@ -1,6 +1,6 @@
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -11,9 +11,6 @@ const __dirname = path.dirname(__filename);
 import authRoutes from "./routes/auth.js";
 import songRoutes from "./routes/songs.js";
 import playlistRoutes from "./routes/playlists.js";
-
-
-dotenv.config();
 
 const app = express();
 app.use(cors());
