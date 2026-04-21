@@ -150,7 +150,7 @@ export default function HomeScreen() {
         {/* 2. Your Playlists */}
         <View className="flex-row justify-between items-center mt-8 mb-2">
           <Text className="text-white text-lg font-semibold">Your Playlists</Text>
-          <TouchableOpacity onPress={() => router.push("/playlist/manage")}>
+          <TouchableOpacity onPress={() => router.push("/(tabs)/saved?tab=playlists")}>
             <Text className="text-[#818cf8] text-sm">See all</Text>
           </TouchableOpacity>
         </View>
@@ -171,7 +171,7 @@ export default function HomeScreen() {
             ))
           ) : (
             <TouchableOpacity 
-              onPress={() => router.push("/playlist/manage")}
+              onPress={() => router.push("/(tabs)/saved?tab=playlists")}
               className="bg-gray-900 h-32 w-48 rounded-xl items-center justify-center border border-gray-800 border-dashed"
             >
               <Ionicons name="add-circle-outline" size={24} color="#666" />

@@ -1,18 +1,28 @@
 import { View, Text, FlatList, TouchableOpacity, Image, TextInput, Modal, ActivityIndicator } from "react-native";
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { SavedContext } from "../../src/context/SavedContext";
 import { PlaylistContext } from "../../src/context/PlaylistContext";
 import { AudioContext } from "../../src/context/AudioContext";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 export default function SavedScreen() {
+  const { tab } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState<"songs" | "playlists">("songs");
   const { savedSongs, toggleSave } = useContext(SavedContext);
   const { playlists, createPlaylist, loading: playlistsLoading } = useContext(PlaylistContext);
   const { playSong, currentSong, isPlaying } = useContext(AudioContext);
   const router = useRouter();
+
+  // Listen to navigation params to switch tab
+  useEffect(() => {
+    if (tab === "playlists") {
+      setActiveTab("playlists");
+    } else if (tab === "songs") {
+      setActiveTab("songs");
+    }
+  }, [tab]);
 
   // Create Playlist Modal State
   const [isModalVisible, setIsModalVisible] = useState(false);
