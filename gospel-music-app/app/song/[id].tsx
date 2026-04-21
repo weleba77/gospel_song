@@ -1,104 +1,102 @@
-import { useEffect, useState, useRef } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
-import { Audio, AVPlaybackStatus } from "expo-av";
+import { useEffect, useState, useContext } from "react";
+import { View, Text, TouchableOpacity, ActivityIndicator, Image } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { AudioContext, Song } from "../../src/context/AudioContext";
+import API from "../../src/api";
 
 export default function SongPlayer() {
-  const { id } = useLocalSearchParams(); // get song ID
-  const [songData, setSongData] = useState<{ title: string; url: string } | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const soundRef = useRef<Audio.Sound | null>(null);
-
+  const { id } = useLocalSearchParams();
+  const [song, setSong] = useState<Song | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  const { playSong, isPlaying, currentSong, togglePlayback } = useContext(AudioContext);
   const router = useRouter();
 
   useEffect(() => {
     async function fetchSong() {
       try {
-        const res = await fetch(`https://your-backend.com/api/songs/${id}`);
-        const data = await res.json();
-        setSongData({ title: data.title, url: data.audioUrl });
+        const res = await API.get(`/songs/${id}`);
+        // Ensure the API response structure matches our Song interface
+        setSong(res.data);
       } catch (err) {
-        console.error(err);
+        console.error("Failed to fetch song:", err);
+      } finally {
+        setLoading(false);
       }
     }
     fetchSong();
   }, [id]);
 
-  useEffect(() => {
-    if (!songData?.url) return;
-
-    const loadAndPlay = async () => {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-      }
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: songData.url },
-        { shouldPlay: true }
-      );
-
-      soundRef.current = sound;
-
-      // Safe TypeScript callback
-      sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        if ("isLoaded" in status && status.isLoaded) {
-          setIsPlaying(status.isPlaying);
-        }
-      });
-    };
-
-    loadAndPlay();
-
-    return () => {
-      soundRef.current?.unloadAsync();
-    };
-  }, [songData]);
-
-  const togglePlay = async () => {
-    if (!soundRef.current) return;
-    const status = await soundRef.current.getStatusAsync();
-
-    if ("isLoaded" in status && status.isLoaded) {
-      if (status.isPlaying) {
-        await soundRef.current.pauseAsync();
-        setIsPlaying(false);
+  const handlePlay = () => {
+    if (song) {
+      if (currentSong?._id === song._id) {
+        togglePlayback();
       } else {
-        await soundRef.current.playAsync();
-        setIsPlaying(true);
+        playSong(song);
       }
     }
   };
 
-  if (!songData) {
+  if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-black">
-        <Text className="text-white">Loading song...</Text>
+        <ActivityIndicator size="large" color="#ffffff" />
       </View>
     );
   }
 
+  if (!song) {
+    return (
+      <View className="flex-1 justify-center items-center bg-black">
+        <Text className="text-white text-lg">Song not found</Text>
+        <TouchableOpacity onPress={() => router.back()} className="mt-4 p-3 bg-gray-800 rounded-lg">
+          <Text className="text-white">Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const isCurrentSong = currentSong?._id === song._id;
+
   return (
     <View className="flex-1 bg-black justify-center items-center px-4">
-      <Text className="text-white text-2xl font-bold mb-6">{songData.title}</Text>
+      {/* Header */}
+      <View className="absolute top-12 left-6">
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="chevron-down" size={32} color="white" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Album Art Placeholder/Image */}
+      <View className="w-64 h-64 bg-gray-900 rounded-2xl mb-12 items-center justify-center shadow-2xl">
+        {song.coverImage ? (
+          <Image source={{ uri: song.coverImage }} className="w-full h-full rounded-2xl" />
+        ) : (
+          <Ionicons name="musical-notes" size={100} color="#374151" />
+        )}
+      </View>
+
+      <Text className="text-white text-3xl font-bold mb-2 text-center">{song.title}</Text>
+      <Text className="text-gray-400 text-xl mb-12 text-center">{song.artist}</Text>
 
       <TouchableOpacity
-        onPress={togglePlay}
-        className="bg-gray-800 p-6 rounded-full mb-4"
+        onPress={handlePlay}
+        className="bg-indigo-600 p-8 rounded-full shadow-lg"
       >
         <Ionicons
-          name={isPlaying ? "pause" : "play"}
+          name={isCurrentSong && isPlaying ? "pause" : "play"}
           size={48}
           color="white"
         />
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => router.back()}
-        className="mt-8 p-3 bg-gray-700 rounded-xl"
+        onPress={() => router.push("/FullPlayer")}
+        className="mt-12"
       >
-        <Text className="text-white">Back</Text>
+        <Text className="text-indigo-400 font-semibold text-lg">Open Player Controls</Text>
       </TouchableOpacity>
     </View>
   );
-}
+}
