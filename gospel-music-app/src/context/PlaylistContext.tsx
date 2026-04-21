@@ -1,6 +1,7 @@
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "../api";
+import { AuthContext } from "./AuthContext";
 
 export interface Song {
   _id: string;
@@ -32,13 +33,16 @@ interface PlaylistContextType {
 export const PlaylistContext = createContext<PlaylistContextType>({} as PlaylistContextType);
 
 export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useContext(AuthContext);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchPlaylists = async () => {
-    // Guard: only fetch if a token actually exists in storage
-    const token = await AsyncStorage.getItem("token");
-    if (!token) return;
+    // Guard: only fetch if we have a user identity
+    if (!user) {
+      setPlaylists([]);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -52,12 +56,8 @@ export const PlaylistProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Small delay so AuthContext has time to load token from AsyncStorage first
-    const timer = setTimeout(() => {
-      fetchPlaylists();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
+    fetchPlaylists();
+  }, [user]); // Re-fetch whenever the logged-in user changes
 
   const createPlaylist = async (name: string) => {
     const res = await API.post("/playlists", { name });
