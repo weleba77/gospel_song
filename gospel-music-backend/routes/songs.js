@@ -52,17 +52,37 @@ router.get("/search", async (req, res) => {
 
     const songs = await Song.find(query).limit(20);
     
-    // Dynamically prepend baseUrl to relative paths
     const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const mappedSongs = songs.map(song => ({
+    const mapSong = (song) => ({
       ...song._doc,
       audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
       coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
-    }));
+    });
 
-    res.json(mappedSongs);
+    res.json(songs.map(mapSong));
   } catch (err) {
     console.error("Search Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// @route   GET /api/songs/:id
+// @desc    Get a single song by ID
+router.get("/:id", async (req, res) => {
+  try {
+    const song = await Song.findById(req.params.id);
+    if (!song) return res.status(404).json({ message: "Song not found" });
+
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const formattedSong = {
+      ...song._doc,
+      audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
+      coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
+    };
+
+    res.json(formattedSong);
+  } catch (err) {
+    console.error("Get Song Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -77,7 +97,6 @@ router.get("/", async (req, res) => {
     
     const songs = await Song.find(query);
     
-    // Dynamically prepend baseUrl to relative paths
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const mappedSongs = songs.map(song => ({
       ...song._doc,

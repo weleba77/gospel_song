@@ -31,7 +31,20 @@ router.post("/", auth, async (req, res) => {
 router.get("/", auth, async (req, res) => {
   try {
     const playlists = await Playlist.find({ owner: req.user.id }).populate("songs");
-    res.json(playlists);
+    
+    // Dynamically prepend baseUrl to relative paths in populated songs
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const mappedPlaylists = playlists.map(playlist => {
+      const p = playlist.toObject();
+      p.songs = p.songs.map(song => ({
+        ...song,
+        audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
+        coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
+      }));
+      return p;
+    });
+
+    res.json(mappedPlaylists);
   } catch (err) {
     console.error("Get Playlists Error:", err);
     res.status(500).json({ message: "Server error" });
@@ -44,7 +57,17 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const playlist = await Playlist.findOne({ _id: req.params.id, owner: req.user.id }).populate("songs");
     if (!playlist) return res.status(404).json({ message: "Playlist not found" });
-    res.json(playlist);
+
+    // Dynamically prepend baseUrl to relative paths in populated songs
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const p = playlist.toObject();
+    p.songs = p.songs.map(song => ({
+      ...song,
+      audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
+      coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
+    }));
+
+    res.json(p);
   } catch (err) {
     console.error("Get Playlist Detail Error:", err);
     res.status(500).json({ message: "Server error" });

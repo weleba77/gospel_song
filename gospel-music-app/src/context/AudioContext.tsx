@@ -2,6 +2,7 @@ import { createContext, useState, useEffect, ReactNode, useCallback, useContext 
 import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DownloadContext } from "./DownloadContext";
+import { BASE_URL } from "../api";
 
 interface Song {
   _id: string;
@@ -78,7 +79,15 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
   }, [currentSong]);
 
   const getEffectiveUrl = useCallback((song: Song) => {
-    return downloadedSongs[song._id]?.localAudioUrl || song.audioUrl;
+    const local = downloadedSongs[song._id]?.localAudioUrl;
+    if (local) return local;
+
+    // Fallback: If URL is relative, prepend the backend host
+    if (song.audioUrl.startsWith("/")) {
+      const host = BASE_URL.replace("/api", "");
+      return `${host}${song.audioUrl}`;
+    }
+    return song.audioUrl;
   }, [downloadedSongs]);
   
   const player = useAudioPlayer(currentSong ? getEffectiveUrl(currentSong) : "");
