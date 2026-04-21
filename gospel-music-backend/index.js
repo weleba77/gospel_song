@@ -47,6 +47,12 @@ app.get("/", (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT,"0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// ✅ Increase timeouts for large file uploads (5 minutes)
+// This fixes the 'unexpected EOF' error on slow mobile connections/ngrok
+server.timeout = 300000; 
+server.keepAliveTimeout = 301000; 
+server.headersTimeout = 302000;

@@ -8,7 +8,7 @@ export const BASE_URL = 'https://margarita-overeater-hungrily.ngrok-free.dev/api
 
 const API = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 600000, // 10 minutes (Essential for large audio uploads)
   headers: {
     "ngrok-skip-browser-warning": "true",
   },
