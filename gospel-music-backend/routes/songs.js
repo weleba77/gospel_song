@@ -10,6 +10,11 @@ import { pipeline } from "stream/promises";
 
 const router = express.Router();
 
+// ✅ "Hot Cache" to store the beginning of popular songs in memory
+// This prevents disk contention when multiple users play the same song.
+const songCache = new Map(); 
+const CACHE_LIMIT_PER_SONG = 2 * 1024 * 1024; // Cache first 2MB
+
 // Multer storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -98,22 +103,25 @@ router.get("/:id/stream", async (req, res) => {
       return res.status(404).json({ message: "Song or audio file not found" });
     }
 
-    // Resolve the internal path (relative to the server root)
-    // The database stores paths like "/uploads/filename.mp3"
     const relativePath = song.audioUrl.startsWith("http") 
       ? new URL(song.audioUrl).pathname 
       : song.audioUrl;
     
-    // Convert absolute path for filesystem
     const filePath = path.join(process.cwd(), relativePath.startsWith("/") ? relativePath.slice(1) : relativePath);
 
-    if (!fs.existsSync(filePath)) {
+    // ✅ NON-BLOCKING: Use promises.stat to check existence and size at once
+    let stat;
+    try {
+      stat = await fs.promises.stat(filePath);
+    } catch (e) {
       return res.status(404).json({ message: "File not found on server" });
     }
 
-    const stat = fs.statSync(filePath);
     const fileSize = stat.size;
     const range = req.headers.range;
+
+    // ✅ Performance: Small highWaterMark (64kb) keeps the event loop snappy
+    const streamOptions = { highWaterMark: 64 * 1024 };
 
     if (range) {
       const parts = range.replace(/bytes=/, "").split("-");
@@ -121,24 +129,54 @@ router.get("/:id/stream", async (req, res) => {
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
       if (start >= fileSize) {
-        res.status(416).send("Requested range not satisfiable\n" + start + " >= " + fileSize);
-        return;
+        return res.status(416).send(`Requested range not satisfiable: ${start} >= ${fileSize}`);
       }
 
       const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(filePath, { start, end });
+
+      // ✅ Serve from Cache if available and starts at 0
+      if (start === 0 && songCache.has(song._id.toString())) {
+        const cachedBuffer = songCache.get(song._id.toString());
+        if (cachedBuffer.length >= chunksize) {
+          res.writeHead(206, {
+            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+            "Accept-Ranges": "bytes",
+            "Content-Length": chunksize,
+            "Content-Type": "audio/mpeg",
+            "Cache-Control": "public, max-age=31536000",
+          });
+          return res.end(cachedBuffer.slice(0, chunksize));
+        }
+      }
+
+      const file = fs.createReadStream(filePath, { ...streamOptions, start, end });
       
       const head = {
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
         "Accept-Ranges": "bytes",
         "Content-Length": chunksize,
         "Content-Type": "audio/mpeg",
+        "Cache-Control": "public, max-age=31536000", // Allow client-side buffering
       };
 
       res.writeHead(206, head);
+
+      // ✅ Cache Filling: If this is the start of the song, fill the Hot Cache
+      if (start === 0 && !songCache.has(song._id.toString())) {
+        let buffers = [];
+        let totalLength = 0;
+        file.on("data", (chunk) => {
+          if (totalLength < CACHE_LIMIT_PER_SONG) {
+            buffers.push(chunk);
+            totalLength += chunk.length;
+          } else if (!songCache.has(song._id.toString())) {
+             songCache.set(song._id.toString(), Buffer.concat(buffers));
+          }
+        });
+      }
+
       file.pipe(res);
       
-      // Cleanup: Destroy the stream if the client disconnects prematurely
       res.on("close", () => {
         file.destroy();
       });
@@ -147,9 +185,10 @@ router.get("/:id/stream", async (req, res) => {
         "Content-Length": fileSize,
         "Content-Type": "audio/mpeg",
         "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=31536000",
       };
       res.writeHead(200, head);
-      fs.createReadStream(filePath).pipe(res);
+      fs.createReadStream(filePath, streamOptions).pipe(res);
     }
   } catch (err) {
     console.error("Streaming Error:", err);
