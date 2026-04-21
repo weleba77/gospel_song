@@ -52,7 +52,8 @@ router.get("/search", async (req, res) => {
 
     const songs = await Song.find(query).limit(20);
     
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}`;
     const mapSong = (song) => ({
       ...song._doc,
       audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
@@ -73,7 +74,8 @@ router.get("/:id", async (req, res) => {
     const song = await Song.findById(req.params.id);
     if (!song) return res.status(404).json({ message: "Song not found" });
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}`;
     const formattedSong = {
       ...song._doc,
       audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
@@ -97,7 +99,8 @@ router.get("/", async (req, res) => {
     
     const songs = await Song.find(query);
     
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}`;
     const mappedSongs = songs.map(song => ({
       ...song._doc,
       audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
@@ -188,7 +191,8 @@ router.get("/my-songs", auth, admin, async (req, res) => {
   try {
     const songs = await Song.find({ uploadedBy: req.user.id });
     
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}`;
     const mappedSongs = songs.map(song => ({
       ...song._doc,
       audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
