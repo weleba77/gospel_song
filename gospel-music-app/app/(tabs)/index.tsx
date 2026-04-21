@@ -150,7 +150,7 @@ export default function HomeScreen() {
         {/* 2. Your Playlists */}
         <View className="flex-row justify-between items-center mt-8 mb-2">
           <Text className="text-white text-lg font-semibold">Your Playlists</Text>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/saved?tab=playlists")}>
+          <TouchableOpacity onPress={() => router.push("/saved?tab=playlists")}>
             <Text className="text-[#818cf8] text-sm">See all</Text>
           </TouchableOpacity>
         </View>

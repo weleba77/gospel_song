@@ -172,6 +172,7 @@ const Profile = () => {
         </View>
 
         <Text className="text-white text-2xl font-bold mt-4">{user?.username || "Gospel User"}</Text>
+        <Text style={{ color: "#818cf8", fontSize: 12, fontWeight: "bold", marginTop: 2 }}>v1.0.1 - Scalability & Sync Fix</Text>
         <Text className="text-gray-400 text-sm">{user?.email}</Text>
 
         {/* Role Badge */}
