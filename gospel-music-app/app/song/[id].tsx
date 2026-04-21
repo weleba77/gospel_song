@@ -69,9 +69,13 @@ export default function SongPlayer() {
       </View>
 
       {/* Album Art Placeholder/Image */}
-      <View className="w-64 h-64 bg-gray-900 rounded-2xl mb-12 items-center justify-center shadow-2xl">
+      <View className="w-64 h-64 bg-gray-900 rounded-2xl mb-12 items-center justify-center shadow-2xl overflow-hidden">
         {song.coverImage ? (
-          <Image source={{ uri: song.coverImage }} className="w-full h-full rounded-2xl" />
+          <Image 
+            source={{ uri: song.coverImage }} 
+            className="w-full h-full"
+            resizeMode="cover"
+          />
         ) : (
           <Ionicons name="musical-notes" size={100} color="#374151" />
         )}

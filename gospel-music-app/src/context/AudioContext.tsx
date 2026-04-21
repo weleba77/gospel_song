@@ -82,12 +82,9 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
     const local = downloadedSongs[song._id]?.localAudioUrl;
     if (local) return local;
 
-    // Fallback: If URL is relative, prepend the backend host
-    if (song.audioUrl.startsWith("/")) {
-      const host = BASE_URL.replace("/api", "");
-      return `${host}${song.audioUrl}`;
-    }
-    return song.audioUrl;
+    // Use our new streaming endpoint for all remote playback
+    // This supports Range requests (seeking) and is highly optimized.
+    return `${BASE_URL}/songs/${song._id}/stream`;
   }, [downloadedSongs]);
   
   const player = useAudioPlayer(currentSong ? getEffectiveUrl(currentSong) : "");

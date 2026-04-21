@@ -89,6 +89,74 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// @route   GET /api/songs/:id/stream
+// @desc    Stream audio file with support for HTTP Range requests (Seeking/Resume)
+router.get("/:id/stream", async (req, res) => {
+  try {
+    const song = await Song.findById(req.params.id);
+    if (!song || !song.audioUrl) {
+      return res.status(404).json({ message: "Song or audio file not found" });
+    }
+
+    // Resolve the internal path (relative to the server root)
+    // The database stores paths like "/uploads/filename.mp3"
+    const relativePath = song.audioUrl.startsWith("http") 
+      ? new URL(song.audioUrl).pathname 
+      : song.audioUrl;
+    
+    // Convert absolute path for filesystem
+    const filePath = path.join(process.cwd(), relativePath.startsWith("/") ? relativePath.slice(1) : relativePath);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: "File not found on server" });
+    }
+
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      if (start >= fileSize) {
+        res.status(416).send("Requested range not satisfiable\n" + start + " >= " + fileSize);
+        return;
+      }
+
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(filePath, { start, end });
+      
+      const head = {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunksize,
+        "Content-Type": "audio/mpeg",
+      };
+
+      res.writeHead(206, head);
+      file.pipe(res);
+      
+      // Cleanup: Destroy the stream if the client disconnects prematurely
+      res.on("close", () => {
+        file.destroy();
+      });
+    } else {
+      const head = {
+        "Content-Length": fileSize,
+        "Content-Type": "audio/mpeg",
+        "Accept-Ranges": "bytes",
+      };
+      res.writeHead(200, head);
+      fs.createReadStream(filePath).pipe(res);
+    }
+  } catch (err) {
+    console.error("Streaming Error:", err);
+    res.status(500).json({ message: "Server error during streaming" });
+  }
+});
+
 // @route   GET /api/songs
 // @desc    Get all songs (optionally filtered by category)
 router.get("/", async (req, res) => {
@@ -117,6 +185,10 @@ router.get("/", async (req, res) => {
 // @desc    Add a new song (supports both File upload and URL)
 // @access  Admin
 router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 }, { name: "coverImage", maxCount: 1 }]), async (req, res) => {
+  console.log("--- New Upload Request ---");
+  console.log("Body:", req.body);
+  console.log("Files received:", req.files ? Object.keys(req.files) : "None");
+  
   try {
     const { title, artist, category } = req.body;
     let { audioUrl, coverImageUrl } = req.body;
