@@ -289,9 +289,37 @@ router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 },
     });
     const savedSong = await newSong.save();
     
+    console.log("✓ Song added successfully:", savedSong._id);
     res.json(savedSong);
   } catch (err) {
-    console.error("Add Song Error:", err);
+    console.error("Add Song Error DETAILS:", err);
+    res.status(500).json({ message: "Server error", detail: err.message });
+  }
+});
+
+// @route   PUT /api/songs/:id
+// @desc    Update song metadata
+// @access  Admin
+router.put("/:id", auth, admin, async (req, res) => {
+  try {
+    const { title, artist, category } = req.body;
+    const song = await Song.findById(req.params.id);
+
+    if (!song) return res.status(404).json({ message: "Song not found" });
+
+    // Check if the admin is the uploader
+    if (song.uploadedBy && song.uploadedBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Not authorized to edit this song" });
+    }
+
+    if (title) song.title = title;
+    if (artist) song.artist = artist;
+    if (category) song.category = category;
+
+    await song.save();
+    res.json(song);
+  } catch (err) {
+    console.error("Update Song Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

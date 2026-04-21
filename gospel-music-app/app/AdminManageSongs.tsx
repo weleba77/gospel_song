@@ -22,7 +22,6 @@ export default function AdminManageSongs() {
       setSongs(res.data);
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to fetch your songs");
     } finally {
       setLoading(false);
     }
@@ -30,12 +29,16 @@ export default function AdminManageSongs() {
 
   useEffect(() => {
     fetchMySongs();
+    
+    // Refresh when navigating back
+    const interval = setInterval(fetchMySongs, 10000); // Periodic refresh as fallback
+    return () => clearInterval(interval);
   }, []);
 
   const handleDelete = (id: string) => {
     Alert.alert(
       "Delete Song",
-      "Are you sure you want to delete this song? This action cannot be undone.",
+      "Are you sure you want to delete this song?",
       [
         { text: "Cancel", style: "cancel" },
         { 
@@ -45,7 +48,6 @@ export default function AdminManageSongs() {
             try {
               await API.delete(`/songs/${id}`);
               setSongs(songs.filter(s => s._id !== id));
-              Alert.alert("Success", "Song deleted successfully");
             } catch (err) {
               Alert.alert("Error", "Failed to delete song");
             }
@@ -53,6 +55,10 @@ export default function AdminManageSongs() {
         }
       ]
     );
+  };
+
+  const handleEdit = (id: string) => {
+    router.push({ pathname: "/AdminEditSong", params: { id } });
   };
 
   return (
@@ -103,12 +109,21 @@ export default function AdminManageSongs() {
                 <Text style={{ color: "#9ca3af", fontSize: 12 }} numberOfLines={1}>{item.artist}</Text>
               </View>
 
-              <TouchableOpacity 
-                onPress={() => handleDelete(item._id)}
-                style={{ padding: 8 }}
-              >
-                <Ionicons name="trash-outline" size={20} color="#ef4444" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row" }}>
+                <TouchableOpacity 
+                  onPress={() => handleEdit(item._id)}
+                  style={{ padding: 8, marginRight: 4 }}
+                >
+                  <Ionicons name="create-outline" size={20} color="#818cf8" />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={() => handleDelete(item._id)}
+                  style={{ padding: 8 }}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         />

@@ -68,19 +68,21 @@ export default function AdminAddSong() {
 
       if (selectedFile) {
         if (Platform.OS === "web") {
-          // On web, we use the File object if available, otherwise fetch the blob
           // @ts-ignore
           const fileToUpload = selectedFile.file || (await (await fetch(selectedFile.uri)).blob());
           formData.append("audioFile", fileToUpload, selectedFile.name);
         } else {
+          // Normalize URI for mobile
+          const uri = Platform.OS === "android" ? selectedFile.uri : selectedFile.uri.replace("file://", "");
+          
           // @ts-ignore
           formData.append("audioFile", {
-            uri: selectedFile.uri,
-            name: selectedFile.name,
+            uri: selectedFile.uri, // React Native handles file:// usually
+            name: selectedFile.name || `audio-${Date.now()}.mp3`,
             type: selectedFile.mimeType || "audio/mpeg",
           });
         }
-      } else {
+      } else if (audioUrl) {
         formData.append("audioUrl", audioUrl);
       }
 
@@ -93,8 +95,8 @@ export default function AdminAddSong() {
           // @ts-ignore
           formData.append("coverImage", {
             uri: coverImage.uri,
-            name: coverImage.name,
-            type: coverImage.type,
+            name: coverImage.name || `cover-${Date.now()}.jpg`,
+            type: coverImage.type || "image/jpeg",
           });
         }
       }
