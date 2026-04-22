@@ -17,6 +17,7 @@ interface AuthType {
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateProfileImage: (imageUrl: string) => Promise<void>;
+  updateProfile: (username: string, email: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthType>({} as AuthType);
@@ -92,9 +93,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateProfile = async (username: string, email: string) => {
+    const res = await API.put("/auth/update-profile", { username, email });
+    const updatedUser = res.data.user;
+    setUser(updatedUser);
+    await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, updateProfileImage }}>
+    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, updateProfileImage, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
-};
+};
+

@@ -46,7 +46,13 @@ function RootLayoutNav() {
       <Stack.Screen name="AdminManageSongs" options={{ headerShown: false }} />
       <Stack.Screen name="playlist/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="Downloads" options={{ headerShown: false }} />
+      <Stack.Screen name="settings/EditProfile" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="settings/Notifications" options={{ headerShown: false }} />
+      <Stack.Screen name="settings/PrivacySecurity" options={{ headerShown: false }} />
+      <Stack.Screen name="settings/AudioQuality" options={{ headerShown: false }} />
+      <Stack.Screen name="settings/HelpSupport" options={{ headerShown: false }} />
     </Stack>
+
   );
 }
 

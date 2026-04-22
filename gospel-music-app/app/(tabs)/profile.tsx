@@ -125,13 +125,6 @@ const Profile = () => {
     }
   };
 
-  const handleOptionPress = (label: string) => {
-    if (Platform.OS === 'web') {
-      alert(`${label} selected (Functionality coming soon!)`);
-    } else {
-      Alert.alert(label, "This feature is coming soon!");
-    }
-  };
 
   const getInitials = (name?: string) => {
     if (!name) return "U";
@@ -194,17 +187,17 @@ const Profile = () => {
         )}
 
         <Text className="text-gray-500 text-xs font-bold uppercase mb-4 tracking-widest">Account Settings</Text>
-
-        <ProfileOption icon="person-outline" label="Edit Profile" onPress={() => handleOptionPress("Edit Profile")} />
-        <ProfileOption icon="notifications-outline" label="Notifications" onPress={() => handleOptionPress("Notifications")} />
-        <ProfileOption icon="shield-checkmark-outline" label="Privacy & Security" onPress={() => handleOptionPress("Privacy & Security")} />
+        <ProfileOption icon="person-outline" label="Edit Profile" onPress={() => router.push("/settings/EditProfile")} />
+        <ProfileOption icon="notifications-outline" label="Notifications" onPress={() => router.push("/settings/Notifications")} />
+        <ProfileOption icon="shield-checkmark-outline" label="Privacy & Security" onPress={() => router.push("/settings/PrivacySecurity")} />
 
         <ProfileOption icon="lock-closed-outline" label="Change Password" onPress={() => setIsPasswordModalVisible(true)} />
 
         <Text className="text-gray-500 text-xs font-bold uppercase mt-8 mb-4 tracking-widest">App Settings</Text>
         <ProfileOption icon="cloud-download-outline" label="Offline Downloads" onPress={() => router.push("/Downloads")} />
-        <ProfileOption icon="headset-outline" label="Audio Quality" onPress={() => handleOptionPress("Audio Quality")} />
-        <ProfileOption icon="help-circle-outline" label="Help & Support" onPress={() => handleOptionPress("Help & Support")} />
+        <ProfileOption icon="headset-outline" label="Audio Quality" onPress={() => router.push("/settings/AudioQuality")} />
+        <ProfileOption icon="help-circle-outline" label="Help & Support" onPress={() => router.push("/settings/HelpSupport")} />
+
 
         {/* Logout Button */}
         <TouchableOpacity

@@ -140,4 +140,39 @@ router.put("/change-password", auth, async (req, res) => {
   }
 });
 
+// @route   PUT /api/auth/update-profile
+// @desc    Update user profile (username, email)
+router.put("/update-profile", auth, async (req, res) => {
+  try {
+    const { username, email } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (username) user.username = username;
+    if (email) {
+      // Check if email already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser && existingUser.id.toString() !== user.id.toString()) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+      user.email = email;
+    }
+
+    await user.save();
+    res.json({ 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        email: user.email, 
+        role: user.role,
+        profileImage: user.profileImage 
+      } 
+    });
+  } catch (err) {
+    console.error("Update Profile Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 export default router;
