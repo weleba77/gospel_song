@@ -72,6 +72,27 @@ router.get("/search", async (req, res) => {
   }
 });
 
+// @route   GET /api/songs/my-songs
+// @desc    Get songs uploaded by the current admin
+router.get("/my-songs", auth, admin, async (req, res) => {
+  try {
+    const songs = await Song.find({ uploadedBy: req.user.id });
+    
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}`;
+    const mappedSongs = songs.map(song => ({
+      ...song._doc,
+      audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
+      coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
+    }));
+
+    res.json(mappedSongs);
+  } catch (err) {
+    console.error("My Songs Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // @route   GET /api/songs/:id
 // @desc    Get a single song by ID
 router.get("/:id", async (req, res) => {
@@ -324,26 +345,6 @@ router.put("/:id", auth, admin, async (req, res) => {
   }
 });
 
-// @route   GET /api/songs/my-songs
-// @desc    Get songs uploaded by the current admin
-router.get("/my-songs", auth, admin, async (req, res) => {
-  try {
-    const songs = await Song.find({ uploadedBy: req.user.id });
-    
-    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
-    const baseUrl = `${protocol}://${req.get("host")}`;
-    const mappedSongs = songs.map(song => ({
-      ...song._doc,
-      audioUrl: song.audioUrl.startsWith("http") ? song.audioUrl : `${baseUrl}${song.audioUrl}`,
-      coverImage: song.coverImage && !song.coverImage.startsWith("http") ? `${baseUrl}${song.coverImage}` : song.coverImage
-    }));
-
-    res.json(mappedSongs);
-  } catch (err) {
-    console.error("My Songs Error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 // @route   DELETE /api/songs/:id
 // @desc    Delete a song

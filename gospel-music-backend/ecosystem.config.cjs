@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: "gospel-music-backend",
     script: "./index.js",
-    instances: 14,
+    instances: 2,
     exec_mode: "cluster",
     env: {
       NODE_ENV: "production",
@@ -10,9 +10,9 @@ module.exports = {
     env_development: {
       NODE_ENV: "development",
     },
-    // Optimization: Restart if memory exceeds 300MB
-    max_memory_restart: "300M",
+    // Optimization: Restart if memory exceeds 1GB
+    max_memory_restart: "1G",
     // Performance: Small delay between restarts to prevent crash loops
-    exp_backoff_restart_delay: 100
+    exp_backoff_restart_delay: 500
   }]
 }
