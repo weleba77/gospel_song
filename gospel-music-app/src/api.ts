@@ -1,7 +1,7 @@
 // app/api.ts
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { triggerGlobalLogout } from "./context/AuthContext";
+import { triggerGlobalLogout } from "./context/AuthEvent";
 
 // Update this URL whenever your ngrok tunnel restarts
 export const BASE_URL = 'https://margarita-overeater-hungrily.ngrok-free.dev/api';

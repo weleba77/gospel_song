@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "../api";
+import { setGlobalLogout } from "./AuthEvent";
 
 interface User {
   id: string;
@@ -23,10 +24,7 @@ interface AuthType {
 export const AuthContext = createContext<AuthType>({} as AuthType);
 
 // Allow the API interceptor to trigger a logout from outside React tree
-let _globalLogout: (() => void) | null = null;
-export const triggerGlobalLogout = () => {
-  if (_globalLogout) _globalLogout();
-};
+// Moved to AuthEvent.ts to prevent circular dependencies
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -34,13 +32,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Register the global logout callback
   useEffect(() => {
-    _globalLogout = () => {
+    setGlobalLogout(() => {
       setUser(null);
-    };
+    });
     return () => {
-      _globalLogout = null;
+      setGlobalLogout(() => {});
     };
   }, []);
+
 
   // Load user from storage
   useEffect(() => {
