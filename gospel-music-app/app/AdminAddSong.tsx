@@ -107,9 +107,10 @@ export default function AdminAddSong() {
 
       Alert.alert("Success", "Song added successfully!");
       router.back();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      Alert.alert("Error", "Failed to add song. Please try again.");
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.detail || err.message || "Failed to add song. Please try again.";
+      Alert.alert("Error", errorMsg);
     } finally {
       setLoading(false);
     }
