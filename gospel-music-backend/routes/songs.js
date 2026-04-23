@@ -12,7 +12,7 @@ const router = express.Router();
 
 // ✅ "Hot Cache" to store the beginning of popular songs in memory
 // This prevents disk contention when multiple users play the same song.
-const songCache = new Map(); 
+const songCache = new Map();
 const CACHE_LIMIT_PER_SONG = 2 * 1024 * 1024; // Cache first 2MB
 
 // Multer storage configuration
@@ -26,8 +26,9 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // Limit audio files to 50MB (adjust as needed)
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("audio/") || file.mimetype.startsWith("image/")) {
       cb(null, true);
@@ -56,7 +57,7 @@ router.get("/search", async (req, res) => {
     }
 
     const songs = await Song.find(query).limit(20);
-    
+
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const baseUrl = `${protocol}://${req.get("host")}`;
     const mapSong = (song) => ({
@@ -77,7 +78,7 @@ router.get("/search", async (req, res) => {
 router.get("/my-songs", auth, admin, async (req, res) => {
   try {
     const songs = await Song.find({ uploadedBy: req.user.id });
-    
+
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const baseUrl = `${protocol}://${req.get("host")}`;
     const mappedSongs = songs.map(song => ({
@@ -124,10 +125,10 @@ router.get("/:id/stream", async (req, res) => {
       return res.status(404).json({ message: "Song or audio file not found" });
     }
 
-    const relativePath = song.audioUrl.startsWith("http") 
-      ? new URL(song.audioUrl).pathname 
+    const relativePath = song.audioUrl.startsWith("http")
+      ? new URL(song.audioUrl).pathname
       : song.audioUrl;
-    
+
     const filePath = path.join(process.cwd(), relativePath.startsWith("/") ? relativePath.slice(1) : relativePath);
 
     // ✅ NON-BLOCKING: Use promises.stat to check existence and size at once
@@ -171,7 +172,7 @@ router.get("/:id/stream", async (req, res) => {
       }
 
       const file = fs.createReadStream(filePath, { ...streamOptions, start, end });
-      
+
       const head = {
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
         "Accept-Ranges": "bytes",
@@ -191,13 +192,13 @@ router.get("/:id/stream", async (req, res) => {
             buffers.push(chunk);
             totalLength += chunk.length;
           } else if (!songCache.has(song._id.toString())) {
-             songCache.set(song._id.toString(), Buffer.concat(buffers));
+            songCache.set(song._id.toString(), Buffer.concat(buffers));
           }
         });
       }
 
       file.pipe(res);
-      
+
       res.on("close", () => {
         file.destroy();
       });
@@ -224,9 +225,9 @@ router.get("/", async (req, res) => {
     const { category } = req.query;
     let query = {};
     if (category) query.category = category;
-    
+
     const songs = await Song.find(query);
-    
+
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const baseUrl = `${protocol}://${req.get("host")}`;
     const mappedSongs = songs.map(song => ({
@@ -244,11 +245,25 @@ router.get("/", async (req, res) => {
 // @route   POST /api/songs
 // @desc    Add a new song (supports both File upload and URL)
 // @access  Admin
-router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 }, { name: "coverImage", maxCount: 1 }]), async (req, res) => {
+router.post("/", auth, admin, (req, res, next) => {
+  upload.fields([{ name: "audioFile", maxCount: 1 }, { name: "coverImage", maxCount: 1 }])(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      // A Multer error occurred when uploading.
+      console.error("Multer Error:", err.message);
+      return res.status(400).json({ message: err.message });
+    } else if (err) {
+      // An unknown error occurred when uploading.
+      console.error("Unknown File Upload Error:", err.message);
+      return res.status(400).json({ message: err.message || "File upload failed" });
+    }
+    // Everything went fine, proceed to the next middleware (the async function)
+    next();
+  });
+}, async (req, res) => {
   console.log("--- New Upload Request ---");
   console.log("Body:", req.body);
   console.log("Files received:", req.files ? Object.keys(req.files) : "None");
-  
+
   try {
     const { title, artist, category } = req.body;
     let { audioUrl, coverImageUrl } = req.body;
@@ -281,35 +296,35 @@ router.post("/", auth, admin, upload.fields([{ name: "audioFile", maxCount: 1 },
         const targetPath = path.join("uploads", filename);
 
         await pipeline(response.data, fs.createWriteStream(targetPath));
-        
+
         // Update audioUrl to point to local hosted file
         audioUrl = `/uploads/${filename}`;
         console.log("Download complete. Local Path:", audioUrl);
       } catch (downloadErr) {
-        console.error("Failed to download audio from URL:", downloadErr.message);
+        console.error("Failed to download audio from URL:", audioUrl, "Error:", downloadErr.message, "Status:", downloadErr.response?.status, "Code:", downloadErr.code);
         return res.status(400).json({ message: "Failed to download the audio from the provided URL. Please ensure it is a direct link." });
       }
     }
-    
+
     // If a cover image was uploaded, generate its URL
     if (req.files?.coverImage?.[0]) {
       coverImageUrl = `/uploads/${req.files.coverImage[0].filename}`;
     }
 
     if (!title || !artist || !audioUrl) {
-      return res.status(400).json({ message: "Please provide all fields (Title, Artist, and either a File or URL)" });
+      return res.status(400).json({ message: "Please provide all required fields: Title, Artist, and either an Audio File or Audio URL." });
     }
 
-    const newSong = new Song({ 
-      title, 
-      artist, 
+    const newSong = new Song({
+      title,
+      artist,
       category,
-      audioUrl, 
+      audioUrl,
       coverImage: coverImageUrl || null,
       uploadedBy: req.user.id
     });
     const savedSong = await newSong.save();
-    
+
     console.log("✓ Song added successfully:", savedSong._id);
     res.json(savedSong);
   } catch (err) {

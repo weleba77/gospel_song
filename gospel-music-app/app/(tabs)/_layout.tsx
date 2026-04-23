@@ -44,6 +44,17 @@ export default function TabLayout() {
         }}
       />
 
+      {/* Create Playlist */}
+      <Tabs.Screen
+        name="create"
+        options={{
+          title: "Create",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="add-circle" size={size} color={color} />
+          ),
+        }}
+      />
+
       {/* Saved */}
       <Tabs.Screen
         name="saved"
